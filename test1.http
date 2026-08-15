@@ -1,0 +1,45 @@
+### 添加张三
+POST http://localhost:8080/users
+Content-Type: application/json
+
+{
+  "id": 1,
+  "name": "张三"
+}
+
+### 添加李四
+POST http://localhost:8080/users
+Content-Type: application/json
+
+{
+  "id": 2,
+  "name": "张三"
+}
+
+### 查询所有用户
+GET http://localhost:8080/users
+
+
+###查询数据库中的用户
+GET http://127.0.0.1:8080/db/users
+
+
+### 添加用户到MySQL
+POST http://127.0.0.1:8080/db/users
+Content-Type: application/json
+
+{
+  "name": "李f、"
+}
+
+### 删除2号用户
+DELETE http://127.0.0.1:8080/db/users/3
+
+### 把1号用户改成王五
+PUT http://127.0.0.1:8080/db/users/1
+Content-Type: application/json
+
+{
+  "name": "王五"
+}
+

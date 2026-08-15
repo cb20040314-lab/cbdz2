@@ -1,0 +1,38 @@
+### 新增待办：HTTP → Spring Boot TodoController → Java TodoService → MyBatis TodoMapper → SQL INSERT
+POST http://127.0.0.1:8080/todos
+Content-Type: application/json
+
+{
+  "title": "完成 Spring Boot 待办项目",
+  "accountId": 1
+}
+
+### 查询待办：HTTP → Spring Boot TodoController → Java TodoService → MyBatis TodoMapper → SQL SELECT
+GET http://127.0.0.1:8080/todos?accountId=1
+
+
+### 把 id 为 1 的待办标记为已完成
+PUT http://127.0.0.1:8080/todos/1/status?completed=1
+
+### 把 id 为 1 的待办改回未完成
+PUT http://127.0.0.1:8080/todos/1/status?completed=0
+
+### 删除 id 为 1 的待办
+DELETE http://127.0.0.1:8080/todos/5
+
+
+###查询账号 1 的第 1 页，每页 2 条待办
+GET http://127.0.0.1:8080/todos/page?accountId=1&page=1&size=2
+
+### 查账号 1 的未完成待办
+GET http://127.0.0.1:8080/todos/status?accountId=1&completed=0
+
+### 查账号 1 的已完成待办
+GET http://127.0.0.1:8080/todos/status?accountId=1&completed=1
+
+
+###现在 accountId=1 只能修改账号 1 自己的待办
+PUT http://127.0.0.1:8080/todos/1?title=完成Java待办项目
+
+###修改用户1的第一个个任务状态
+PUT http://127.0.0.1:8080/todos/1/status?completed=1&accountId=2
