@@ -31,4 +31,4 @@ public class Result<T> {
     public T getData() {
         return data;
     }
-}
+}//我试试
