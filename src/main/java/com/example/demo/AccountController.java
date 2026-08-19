@@ -6,6 +6,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+
 @RestController
 public class AccountController {
 
@@ -49,5 +52,10 @@ public class AccountController {
         }
 
         return Result.error("用户名或密码错误");
+    }
+
+    @GetMapping("/me")
+    public Result<String> me(Authentication authentication) {
+        return Result.success(authentication.getName());
     }
 }
