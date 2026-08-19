@@ -17,11 +17,11 @@ PUT http://127.0.0.1:8080/todos/1/status?completed=1
 ### 把 id 为 1 的待办改回未完成
 PUT http://127.0.0.1:8080/todos/1/status?completed=0
 
-### 删除 id 为 1 的待办
+### 删除 id 为 5 的待办
 DELETE http://127.0.0.1:8080/todos/5
 
 
-###查询账号 1 的第 1 页，每页 2 条待办
+### 查询账号 1 的第 1 页，每页 2 条待办
 GET http://127.0.0.1:8080/todos/page?accountId=1&page=1&size=2
 
 ### 查账号 1 的未完成待办
@@ -31,8 +31,20 @@ GET http://127.0.0.1:8080/todos/status?accountId=1&completed=0
 GET http://127.0.0.1:8080/todos/status?accountId=1&completed=1
 
 
-###现在 accountId=1 只能修改账号 1 自己的待办
+### 账号 1 修改自己的待办标题
 PUT http://127.0.0.1:8080/todos/1?title=完成Java待办项目
 
-###修改用户1的第一个个任务状态
+### 尝试以账号 2 的身份修改 id 为 1 的待办状态
 PUT http://127.0.0.1:8080/todos/1/status?completed=1&accountId=2
+
+### 用户登录并获取认证信息
+POST http://127.0.0.1:8080/login
+Content-Type: application/json
+
+{
+  "username": "zhangsan",
+  "password": "999999"
+}
+
+### 登录后查询账号 1 的已完成待办
+GET http://127.0.0.1:8080/todos/status?accountId=1&completed=1

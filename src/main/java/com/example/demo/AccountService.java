@@ -1,24 +1,34 @@
 package com.example.demo;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AccountService {
 
-    private final AccountMapper accountMapper;
+    private final PasswordEncoder passwordEncoder;
+    private  final AccountMapper accountMapper;
 
-    public AccountService(AccountMapper accountMapper) {
+    public AccountService(
+            AccountMapper accountMapper,
+            PasswordEncoder passwordEncoder) {
+
         this.accountMapper = accountMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // 注册
     public boolean register(Account account) {
-        // 先按用户名查：查到了说明名字已经被别人注册
         if (accountMapper.findByUsername(account.getUsername()) != null) {
             return false;
         }
 
-        // 没查到，才插入数据库
+        // 把用户输入的明文密码转换成 BCrypt 密文
+        String encodedPassword =
+                passwordEncoder.encode(account.getPassword());
+
+        account.setPassword(encodedPassword);
+
         return accountMapper.insert(account) > 0;
     }
 
@@ -33,6 +43,9 @@ public class AccountService {
         }
 
         // 用户名存在，再比较密码
-        return savedAccount.getPassword().equals(account.getPassword());
+        return passwordEncoder.matches(
+                account.getPassword(),
+                savedAccount.getPassword()
+        );
     }
 }

@@ -24,3 +24,12 @@ Content-Type: application/json
   "username": "zhangsan",
   "password": "123456"
 }
+
+###测试加入BCryp加密
+POST http://127.0.0.1:8080/register
+Content-Type: application/json
+
+{
+  "username": "security_test",
+  "password": "123456"
+}
