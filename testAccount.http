@@ -21,7 +21,7 @@ POST http://127.0.0.1:8080/login
 Content-Type: application/json
 
 {
-  "username": "zhangsan",
+  "username": "security_test",
   "password": "123456"
 }
 
