@@ -48,3 +48,8 @@ Content-Type: application/json
 
 ### 登录后查询账号 1 的已完成待办
 GET http://127.0.0.1:8080/todos/status?accountId=1&completed=1
+
+### 携带 Token
+GET http://127.0.0.1:8080/todos/status?accountId=1&completed=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzZWN1cml0eV90ZXN0IiwiaWF0IjoxNzg3MTI3NTk2LCJleHAiOjE3ODcxMzQ3OTZ9.MZArZSU744edWt6SiogyIUBREv3WdLrOBtBIV91qmMA
+
