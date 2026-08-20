@@ -15,31 +15,56 @@
 <p id="message"></p>
 
 <script>
-    async function login() {
-        const username = document.getElementById("username").value;
-        const password = document.getElementById("password").value;
 
+        // 定义登录函数；点击“登录”按钮时执行
+        async function login() {
+
+        // 获取用户名输入框中的内容
+        const username =
+        document.getElementById("username").value;
+
+        // 获取密码输入框中的内容
+        const password =
+        document.getElementById("password").value;
+
+        // 向后端的 /login 接口发送登录请求
+        // await 表示等待后端返回结果
         const response = await fetch("/login", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password
-            })
-        });
 
+        // 使用 POST 请求
+        method: "POST",
+
+        // 告诉后端：发送的数据是 JSON
+        headers: {
+        "Content-Type": "application/json"
+    },
+
+        // 把用户名和密码转换为 JSON 字符串，放进请求体
+        body: JSON.stringify({
+        username: username,
+        password: password
+    })
+    });
+
+        // 把后端返回的 JSON 数据转换成 JavaScript 对象
         const result = await response.json();
 
+        // 判断后端返回的 code 是否为 1
         if (result.code === 1) {
-            localStorage.setItem("token", result.data.token);
-            document.getElementById("message").textContent =
-                "登录成功，欢迎 " + username;
-        } else {
-            document.getElementById("message").textContent =
-                result.message;
-        }
+
+        // 登录成功，把后端返回的 Token 保存到浏览器
+        localStorage.setItem("token", result.data.token);
+
+        // 在 id="message" 的 <p> 标签中显示登录成功
+        document.getElementById("message").textContent =
+        "登录成功，欢迎 " + username;
+
+    } else {
+
+        // 登录失败，显示后端返回的错误信息
+        document.getElementById("message").textContent =
+        result.message;
+    }
     }
 </script>
 
