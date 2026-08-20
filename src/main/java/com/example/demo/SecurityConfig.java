@@ -30,8 +30,12 @@ public class SecurityConfig {
                 // 设置接口访问规则
                 .authorizeHttpRequests(authorize -> authorize
                         // 注册和登录不需要 Token
-                        .requestMatchers("/register", "/login").permitAll()
-
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/register",
+                                "/login"
+                        ).permitAll()
                         // 其他所有接口都需要认证
                         .anyRequest().authenticated()
                 )

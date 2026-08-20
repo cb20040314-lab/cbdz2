@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>待办管理系统</title>
+</head>
+<body>
+
+<h1>待办管理系统</h1>
+
+<input id="username" placeholder="用户名">
+<input id="password" type="password" placeholder="密码">
+<button onclick="login()">登录</button>
+
+<p id="message"></p>
+
+<script>
+    async function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        const response = await fetch("/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.code === 1) {
+            localStorage.setItem("token", result.data.token);
+            document.getElementById("message").textContent =
+                "登录成功，欢迎 " + username;
+        } else {
+            document.getElementById("message").textContent =
+                result.message;
+        }
+    }
+</script>
+
+</body>
+</html>
