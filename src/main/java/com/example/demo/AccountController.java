@@ -4,6 +4,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -36,16 +37,18 @@ public class AccountController {
 //    }
 
     @PostMapping("/login")
-    public Result<Map<String, String>> login(@RequestBody Account account) {
-        boolean success = accountService.login(account);
+    public Result<Map<String, Object>> login(@RequestBody Account account) {
+        Account savedAccount = accountService.login(account);
 
-        if (success) {
+        if (savedAccount != null) {
             String token = JwtUtil.createToken(account.getUsername());
 
-            return Result.success(Map.of(
-                    "message", "登录成功",
-                    "token", token
-            ));
+            Map<String, Object> loginData = new LinkedHashMap<>();
+            loginData.put("message", "登录成功");
+            loginData.put("token", token);
+            loginData.put("accountId", savedAccount.getId());
+            loginData.put("role", savedAccount.getRole());
+            return Result.success(loginData);
         }
 
         return Result.error("用户名或密码错误");

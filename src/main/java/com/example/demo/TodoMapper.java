@@ -53,8 +53,9 @@ public interface TodoMapper {
             @Param("completed") Integer completed,
             @Param("accountId") Integer accountId);
 
-    @Delete("DELETE FROM todos WHERE id = #{id}")
-    int deleteById(Integer id);
+    @Delete("DELETE FROM todos WHERE id = #{id} AND account_id = #{accountId}")
+    int deleteById(@Param("id") Integer id,
+                   @Param("accountId") Integer accountId);
 
 
     @Select("""
@@ -88,10 +89,12 @@ public interface TodoMapper {
         UPDATE todos
         SET title = #{title}
         WHERE id = #{id}
+          AND account_id = #{accountId}
         """)
     int updateTitle(
             @Param("id") Integer id,
-            @Param("title") String title);
+            @Param("title") String title,
+            @Param("accountId") Integer accountId);
 }
 
 

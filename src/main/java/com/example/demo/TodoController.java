@@ -12,10 +12,37 @@ public class TodoController {
 
     /** 待办业务层，负责调用数据库操作。 */
     private final TodoService todoService;
+    private final AccountService accountService;
 
     /** 由 Spring 自动注入 TodoService。 */
-    public TodoController(TodoService todoService) {
+    public TodoController(TodoService todoService, AccountService accountService) {
         this.todoService = todoService;
+        this.accountService = accountService;
+    }
+
+    private String validateTodoAccess(String authorization, Integer accountId) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return "请先登录";
+        }
+
+        try {
+            String token = authorization.substring("Bearer ".length()).trim();
+            String username = JwtUtil.getUsername(token);
+            Account account = accountService.findByUsername(username);
+
+            if (account == null) {
+                return "登录账号不存在";
+            }
+            if ("ADMIN".equalsIgnoreCase(account.getRole())) {
+                return "管理员账号不能管理待办";
+            }
+            if (!account.getId().equals(accountId)) {
+                return "只能管理当前登录账号的待办";
+            }
+            return null;
+        } catch (Exception exception) {
+            return "登录状态无效或已过期";
+        }
     }
 
     /**
@@ -25,7 +52,13 @@ public class TodoController {
      * @return 保存后的待办（包含数据库生成的 id）
      */
     @PostMapping("/todos")
-    public Result<Todo> add(@RequestBody Todo todo) {
+    public Result<Todo> add(
+            @RequestBody Todo todo,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        String accessError = validateTodoAccess(authorization, todo.getAccountId());
+        if (accessError != null) {
+            return Result.error(accessError);
+        }
         Todo savedTodo = todoService.add(todo);
         return Result.success(savedTodo);
     }
@@ -38,7 +71,13 @@ public class TodoController {
      */
     @GetMapping("/todos")
     public Result<List<Todo>> findByAccountId(
-            @RequestParam Integer accountId) {//网址拿参数
+            @RequestParam Integer accountId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {//网址拿参数
+
+        String accessError = validateTodoAccess(authorization, accountId);
+        if (accessError != null) {
+            return Result.error(accessError);
+        }
 
         List<Todo> todos = todoService.findByAccountId(accountId);
         return Result.success(todos);
@@ -48,7 +87,13 @@ public class TodoController {
     public Result<String> updateStatus(
             @PathVariable Integer id,
             @RequestParam Integer completed,
-            @RequestParam Integer accountId) {
+            @RequestParam Integer accountId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+
+        String accessError = validateTodoAccess(authorization, accountId);
+        if (accessError != null) {
+            return Result.error(accessError);
+        }
 
         boolean success =
                 todoService.updateStatus(id, completed, accountId);
@@ -60,8 +105,15 @@ public class TodoController {
     }
 //删除用户
     @DeleteMapping("/todos/{id}")
-    public Result<String> delete(@PathVariable Integer id) {
-        boolean success = todoService.delete(id);
+    public Result<String> delete(
+            @PathVariable Integer id,
+            @RequestParam Integer accountId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        String accessError = validateTodoAccess(authorization, accountId);
+        if (accessError != null) {
+            return Result.error(accessError);
+        }
+        boolean success = todoService.delete(id, accountId);
 
         if (success) {
             return Result.success("删除成功");
@@ -73,7 +125,13 @@ public class TodoController {
     public Result<List<Todo>> findPage(
             @RequestParam Integer accountId,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "5") int size) {
+            @RequestParam(defaultValue = "5") int size,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+
+        String accessError = validateTodoAccess(authorization, accountId);
+        if (accessError != null) {
+            return Result.error(accessError);
+        }
 
         List<Todo> todos = todoService.findPage(accountId, page, size);
         return Result.success(todos);
@@ -82,7 +140,13 @@ public class TodoController {
     @GetMapping("/todos/status")
     public Result<List<Todo>> findByStatus(
             @RequestParam Integer accountId,
-            @RequestParam Integer completed) {//网址 ? 后面取参数
+            @RequestParam Integer completed,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {//网址 ? 后面取参数
+
+        String accessError = validateTodoAccess(authorization, accountId);
+        if (accessError != null) {
+            return Result.error(accessError);
+        }
 
         List<Todo> todos =
                 todoService.findByStatus(accountId, completed);
@@ -93,9 +157,16 @@ public class TodoController {
     @PutMapping("/todos/{id}")
     public Result<String> updateTitle(
             @PathVariable Integer id,
-            @RequestParam String title) {
+            @RequestParam String title,
+            @RequestParam Integer accountId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
 
-        boolean success = todoService.updateTitle(id, title);
+        String accessError = validateTodoAccess(authorization, accountId);
+        if (accessError != null) {
+            return Result.error(accessError);
+        }
+
+        boolean success = todoService.updateTitle(id, title, accountId);
 
         if (success) {
             return Result.success("待办内容修改成功");

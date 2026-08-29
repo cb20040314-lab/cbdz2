@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!--
+  应用入口页：负责注册、登录和登录后的角色分流。
+  普通用户进入 todo.html，管理员进入 admin.html。
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Spring Boot 待办管理页面">
+    <title>轻简待办</title>
+    <style>
+        /* 全站主题变量，集中控制背景、文字、边框和状态颜色。 */
+        :root {
+            --bg: #f4f7fb;
+            --surface: #ffffff;
+            --surface-soft: #f8fafc;
+            --text: #172033;
+            --muted: #687386;
+            --line: #e3e8f1;
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --primary-soft: #eef2ff;
+            --success: #15803d;
+            --success-soft: #ecfdf3;
+            --danger: #dc2626;
+            --danger-soft: #fef2f2;
+            --warning: #b45309;
+            --warning-soft: #fff7ed;
+            --shadow: 0 18px 45px rgba(33, 43, 76, .08);
+            --radius: 18px;
+        }
+
+        * { box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            min-width: 320px;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 8% 0%, rgba(79, 70, 229, .12), transparent 28rem),
+                radial-gradient(circle at 95% 18%, rgba(14, 165, 233, .09), transparent 24rem),
+                var(--bg);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            line-height: 1.5;
+        }
+
+        button, input, select { font: inherit; }
+
+        button { cursor: pointer; }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: .62;
+        }
+
+        .shell {
+            width: min(1180px, calc(100% - 32px));
+            margin: 0 auto;
+        }
+
+        .hero { padding: 42px 0 24px; }
+
+        .hero-inner {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 24px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            color: var(--primary-dark);
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: .08em;
+        }
+
+        .eyebrow::before {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--primary);
+            box-shadow: 0 0 0 5px rgba(79, 70, 229, .12);
+            content: "";
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(30px, 6vw, 52px);
+            line-height: 1.08;
+            letter-spacing: -.04em;
+        }
+
+        .hero p {
+            max-width: 640px;
+            margin: 13px 0 0;
+            color: var(--muted);
+            font-size: 16px;
+        }
+
+        .login-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 190px;
+            padding: 12px 15px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .78);
+            box-shadow: 0 8px 28px rgba(33, 43, 76, .06);
+            backdrop-filter: blur(12px);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: #94a3b8;
+        }
+
+        .login-chip.logged-in .status-dot {
+            background: #22c55e;
+            box-shadow: 0 0 0 5px rgba(34, 197, 94, .13);
+        }
+
+        .login-chip strong,
+        .login-chip small { display: block; }
+
+        .login-chip strong { font-size: 14px; }
+
+        .login-chip small {
+            max-width: 200px;
+            overflow: hidden;
+            color: var(--muted);
+            font-size: 12px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        main {
+            display: grid;
+            gap: 22px;
+            padding-bottom: 60px;
+        }
+
+        .panel {
+            border: 1px solid rgba(227, 232, 241, .9);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, .92);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 22px 24px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .panel-head h2,
+        .card h3 { margin: 0; }
+
+        .panel-head h2 { font-size: 20px; }
+
+        .panel-head p,
+        .card-note {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .panel-body { padding: 24px; }
+
+        .auth-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            padding: 20px;
+            border: 1px solid var(--line);
+            border-radius: 15px;
+            background: var(--surface-soft);
+        }
+
+        .card h3 { font-size: 16px; }
+
+        .stack {
+            display: grid;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .field { display: grid; gap: 6px; }
+
+        .field label,
+        .label {
+            color: #465167;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        input, select {
+            width: 100%;
+            min-height: 42px;
+            padding: 9px 12px;
+            border: 1px solid #d7deea;
+            border-radius: 10px;
+            outline: none;
+            color: var(--text);
+            background: #fff;
+            transition: border-color .18s, box-shadow .18s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, .1);
+        }
+
+        .btn {
+            display: inline-flex;
+            min-height: 40px;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 8px 14px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            color: #fff;
+            background: var(--primary);
+            font-weight: 750;
+            transition: transform .15s, background .15s, border-color .15s;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            border-color: #d7deea;
+            color: #354056;
+            background: #fff;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            border-color: #b9c3d4;
+            background: #f8fafc;
+        }
+
+        .btn-danger {
+            border-color: #fecaca;
+            color: var(--danger);
+            background: var(--danger-soft);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            border-color: #fca5a5;
+            background: #fee2e2;
+        }
+
+        .btn-success {
+            border-color: #bbf7d0;
+            color: var(--success);
+            background: var(--success-soft);
+        }
+
+        .btn-success:hover:not(:disabled) { background: #dcfce7; }
+
+        .btn-sm {
+            min-height: 34px;
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+
+        .btn-block { width: 100%; }
+
+        .account-card {
+            background: linear-gradient(135deg, var(--primary-soft), #f8fafc 68%);
+        }
+
+        [hidden] { display: none !important; }
+
+        .auth-page #todoPanel { display: none; }
+
+        .login-required {
+            display: grid;
+            min-height: 220px;
+            place-items: center;
+            padding: 34px 20px;
+            text-align: center;
+        }
+
+        .login-required-box {
+            max-width: 430px;
+            padding: 26px;
+            border: 1px dashed #c7d2fe;
+            border-radius: 16px;
+            background: var(--primary-soft);
+        }
+
+        .lock-icon {
+            display: grid;
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 13px;
+            place-items: center;
+            border-radius: 15px;
+            color: var(--primary-dark);
+            background: #fff;
+            font-size: 24px;
+        }
+
+        .login-required h3 { margin: 0; }
+
+        .login-required p {
+            margin: 7px 0 17px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .account-value {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .account-value input { font-size: 18px; font-weight: 800; }
+
+        .token-box {
+            min-height: 38px;
+            padding: 9px 11px;
+            border: 1px dashed #c7d2fe;
+            border-radius: 9px;
+            overflow: hidden;
+            color: var(--muted);
+            background: rgba(255, 255, 255, .7);
+            font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: end;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .toolbar .field { min-width: 100px; }
+
+        .toolbar .field.grow { flex: 1 1 280px; }
+
+        .toolbar .btn { flex: 0 0 auto; }
+
+        .subsection + .subsection {
+            margin-top: 22px;
+            padding-top: 22px;
+            border-top: 1px solid var(--line);
+        }
+
+        .section-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 13px;
+        }
+
+        .section-title-row h3 { margin: 0; font-size: 16px; }
+
+        .count {
+            padding: 4px 10px;
+            border-radius: 999px;
+            color: var(--primary-dark);
+            background: var(--primary-soft);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .todo-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .todo-item {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 14px;
+            padding: 15px 16px;
+            border: 1px solid var(--line);
+            border-radius: 13px;
+            background: #fff;
+            transition: border-color .18s, box-shadow .18s;
+        }
+
+        .todo-item:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 7px 20px rgba(33, 43, 76, .06);
+        }
+
+        .check-button {
+            width: 26px;
+            height: 26px;
+            border: 2px solid #aab4c5;
+            border-radius: 50%;
+            color: transparent;
+            background: #fff;
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .todo-item.completed .check-button {
+            border-color: var(--success);
+            color: #fff;
+            background: var(--success);
+        }
+
+        .todo-title {
+            margin: 0;
+            overflow-wrap: anywhere;
+            font-weight: 750;
+        }
+
+        .todo-item.completed .todo-title {
+            color: #8a94a5;
+            text-decoration: line-through;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px 12px;
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .item-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+
+        .empty {
+            padding: 34px 18px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 13px;
+            color: var(--muted);
+            background: var(--surface-soft);
+            text-align: center;
+        }
+
+        .empty strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #465167;
+        }
+
+        .toast-stack {
+            position: fixed;
+            z-index: 100;
+            top: 18px;
+            right: 18px;
+            display: grid;
+            width: min(390px, calc(100% - 36px));
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: start;
+            gap: 10px;
+            padding: 13px 14px;
+            border: 1px solid var(--line);
+            border-left-width: 4px;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 15px 35px rgba(15, 23, 42, .16);
+            animation: toast-in .22s ease-out;
+            pointer-events: auto;
+        }
+
+        .toast.success { border-left-color: var(--success); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.info { border-left-color: var(--primary); }
+
+        .toast-icon { font-weight: 900; }
+        .toast.success .toast-icon { color: var(--success); }
+        .toast.error .toast-icon { color: var(--danger); }
+        .toast.info .toast-icon { color: var(--primary); }
+
+        .toast-message {
+            overflow-wrap: anywhere;
+            font-size: 14px;
+        }
+
+        .toast-close {
+            padding: 0 2px;
+            border: 0;
+            color: var(--muted);
+            background: transparent;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-8px); }
+        }
+
+        @media (max-width: 900px) {
+            .auth-grid { grid-template-columns: 1fr 1fr; }
+            .account-card { grid-column: 1 / -1; }
+        }
+
+        @media (max-width: 680px) {
+            .shell { width: min(100% - 20px, 1180px); }
+            .hero { padding-top: 25px; }
+            .hero-inner { display: block; }
+            .login-chip { margin-top: 18px; width: fit-content; max-width: 100%; }
+            .panel-head, .panel-body { padding: 18px; }
+            .auth-grid { grid-template-columns: 1fr; }
+            .account-card { grid-column: auto; }
+            .todo-item { grid-template-columns: auto minmax(0, 1fr); }
+            .item-actions { grid-column: 1 / -1; padding-left: 40px; }
+            .toolbar > *, .toolbar .field, .toolbar .field.grow { flex: 1 1 100%; }
+            .toolbar .btn { flex: 1 1 auto; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    </style>
+</head>
+<body class="auth-page">
+<!-- 全局消息容器：JavaScript 会把成功、失败等 Toast 提示插入这里。 -->
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+<!-- 页面头部：展示站点名称以及当前本地登录状态。 -->
+<header class="hero">
+    <div class="shell hero-inner">
+        <div>
+            <div class="eyebrow">轻简待办 · 账号入口</div>
+            <h1>欢迎回来</h1>
+            <p>注册或登录账号，成功后进入独立的待办管理页面。</p>
+        </div>
+        <div id="loginChip" class="login-chip" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <div>
+                <strong id="loginState">未登录</strong>
+                <small id="loginDetail">请先登录以保存访问令牌</small>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="shell">
+    <!-- 账号区域：提供注册、登录和已登录账号信息。 -->
+    <section id="authPanel" class="panel" aria-labelledby="authTitle">
+        <div class="panel-head">
+            <div>
+                <h2 id="authTitle">账号与身份</h2>
+                <p>注册或登录后，令牌会保存在当前浏览器的 localStorage 中。</p>
+            </div>
+        </div>
+        <div class="panel-body auth-grid">
+            <!-- 注册表单：提交到 POST /register。 -->
+            <article class="card">
+                <h3>注册账号</h3>
+                <p class="card-note">创建一个新的登录账号。</p>
+                <form id="registerForm" class="stack">
+                    <div class="field">
+                        <label for="registerUsername">用户名</label>
+                        <input id="registerUsername" name="username" autocomplete="username" required maxlength="50" placeholder="请输入用户名">
+                    </div>
+                    <div class="field">
+                        <label for="registerPassword">密码</label>
+                        <input id="registerPassword" name="password" type="password" autocomplete="new-password" required maxlength="100" placeholder="请输入密码">
+                    </div>
+                    <button class="btn btn-block" type="submit">注册</button>
+                </form>
+            </article>
+
+            <!-- 登录表单：提交到 POST /login，成功后保存 JWT 和账号信息。 -->
+            <article class="card">
+                <h3>登录账号</h3>
+                <p class="card-note">登录成功后自动保存并使用 Token。</p>
+                <form id="loginForm" class="stack">
+                    <div class="field">
+                        <label for="loginUsername">用户名</label>
+                        <input id="loginUsername" name="username" autocomplete="username" required maxlength="50" placeholder="请输入用户名">
+                    </div>
+                    <div class="field">
+                        <label for="loginPassword">密码</label>
+                        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required maxlength="100" placeholder="请输入密码">
+                    </div>
+                    <button class="btn btn-block" type="submit">登录</button>
+                </form>
+            </article>
+
+            <!-- 已登录状态卡片；默认隐藏，检测到 Token 后由脚本显示。 -->
+            <article id="accountCard" class="card account-card" hidden>
+                <h3>当前待办账号</h3>
+                <p class="card-note">登录接口不返回账号 ID，请在此手动填写。所有待办请求均使用该值。</p>
+                <div class="stack">
+                    <div class="field">
+                        <label for="accountId">账号 ID</label>
+                        <div class="account-value">
+                            <input id="accountId" type="number" min="1" step="1" inputmode="numeric" placeholder="例如：1">
+                            <button id="saveAccountId" class="btn btn-secondary" type="button">保存</button>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="label">已保存 Token</span>
+                        <div id="tokenPreview" class="token-box" title="当前 Token">尚未登录</div>
+                    </div>
+                    <button id="logoutButton" class="btn btn-danger btn-block" type="button">退出登录</button>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- 当前正常流程会在登录后跳转；这里保留入口页原有的待办操作区域。 -->
+    <section id="todoPanel" class="panel" aria-labelledby="todoTitle">
+        <div class="panel-head">
+            <div>
+                <h2 id="todoTitle">待办管理</h2>
+                <p>新增、查询、筛选、分页、改名、切换状态或删除待办。</p>
+            </div>
+        </div>
+        <div id="todoLoginRequired" class="login-required">
+            <div class="login-required-box">
+                <div class="lock-icon" aria-hidden="true">🔒</div>
+                <h3>请先登录</h3>
+                <p>登录成功后才能新增、查询或修改待办事项。</p>
+                <button id="goToLogin" class="btn" type="button">前往登录</button>
+            </div>
+        </div>
+        <div id="todoWorkspace" class="panel-body" hidden>
+            <div class="subsection">
+                <form id="addTodoForm" class="toolbar">
+                    <div class="field grow">
+                        <label for="newTodoTitle">待办标题</label>
+                        <input id="newTodoTitle" required maxlength="200" placeholder="例如：完成 Spring Boot 项目">
+                    </div>
+                    <button class="btn" type="submit">＋ 新增待办</button>
+                </form>
+            </div>
+
+            <div class="subsection">
+                <div class="toolbar" aria-label="待办查询工具">
+                    <button id="loadAllTodos" class="btn btn-secondary" type="button">查询全部</button>
+                    <button id="loadOpenTodos" class="btn btn-secondary" type="button">仅未完成</button>
+                    <button id="loadDoneTodos" class="btn btn-secondary" type="button">仅已完成</button>
+                    <div class="field">
+                        <label for="todoPage">页码</label>
+                        <input id="todoPage" type="number" min="1" step="1" value="1">
+                    </div>
+                    <div class="field">
+                        <label for="todoSize">每页条数</label>
+                        <input id="todoSize" type="number" min="1" max="100" step="1" value="5">
+                    </div>
+                    <button id="loadTodoPage" class="btn btn-secondary" type="button">分页查询</button>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <div class="section-title-row">
+                    <h3 id="todoListTitle">待办列表</h3>
+                    <span id="todoCount" class="count">0 条</span>
+                </div>
+                <div id="todoList" class="todo-list">
+                    <div class="empty"><strong>尚未加载待办</strong>填写账号 ID 后选择一种查询方式。</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<script>
+    "use strict";
+
+    // localStorage 键名集中定义，避免三个页面使用不一致的字符串。
+    const STORAGE = {
+        token: "todo_manager_token",
+        username: "todo_manager_username",
+        accountId: "todo_manager_account_id",
+        role: "todo_manager_role"
+    };
+
+    // 当前页面内存状态；查询结果先写入 state，再统一渲染。
+    const state = {
+        todos: [],
+        todoViewTitle: "待办列表"
+    };
+
+    // 常用 DOM 工具：$ 查询元素，make 创建带样式和文本的新元素。
+    const $ = (selector) => document.querySelector(selector);
+
+    function make(tag, className, text) {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        if (text !== undefined && text !== null) element.textContent = String(text);
+        return element;
+    }
+
+    // 显示右上角临时消息，错误消息停留时间更长。
+    function notify(type, message) {
+        const toast = make("div", `toast ${type}`);
+        toast.setAttribute("role", type === "error" ? "alert" : "status");
+
+        const icons = { success: "✓", error: "!", info: "i" };
+        toast.appendChild(make("span", "toast-icon", icons[type] || "i"));
+        toast.appendChild(make("div", "toast-message", message));
+
+        const close = make("button", "toast-close", "×");
+        close.type = "button";
+        close.setAttribute("aria-label", "关闭提示");
+        close.addEventListener("click", () => toast.remove());
+        toast.appendChild(close);
+
+        $("#toastStack").appendChild(toast);
+        window.setTimeout(() => toast.remove(), type === "error" ? 6500 : 4200);
+    }
+
+    // 从后端统一 Result<T> 响应中提取适合展示的消息。
+    function backendMessage(payload, fallback) {
+        if (typeof payload?.data === "string" && payload.data.trim()) return payload.data;
+        if (typeof payload?.message === "string" && payload.message.trim() && payload.message !== "操作成功") {
+            return payload.message;
+        }
+        return fallback;
+    }
+
+    // 统一接口入口：自动添加 JSON 请求头、Bearer Token，并处理各种错误。
+    async function apiRequest(path, options = {}, successText = "操作成功") {
+        const headers = new Headers(options.headers || {});
+        headers.set("Accept", "application/json");
+        if (options.body && !headers.has("Content-Type")) {
+            headers.set("Content-Type", "application/json");
+        }
+
+        const token = localStorage.getItem(STORAGE.token);
+        if (token) headers.set("Authorization", `Bearer ${token}`);
+
+        try {
+            const response = await fetch(path, { ...options, headers });
+            const raw = await response.text();
+            let payload = null;
+
+            if (raw) {
+                try {
+                    payload = JSON.parse(raw);
+                } catch (_) {
+                    payload = { message: raw };
+                }
+            }
+
+            if (!response.ok) {
+                const detail = payload?.message || `${response.status} ${response.statusText}`;
+                throw new Error(`请求失败：${detail}`);
+            }
+
+            if (payload && Object.prototype.hasOwnProperty.call(payload, "code") && Number(payload.code) !== 1) {
+                throw new Error(payload.message || "后端返回操作失败");
+            }
+
+            notify("success", backendMessage(payload, successText));
+            return { ok: true, data: payload?.data, payload };
+        } catch (error) {
+            const isNetworkError = error instanceof TypeError;
+            const message = isNetworkError
+                ? "网络异常：无法连接后端，请确认 Spring Boot 已在当前地址启动。"
+                : (error.message || "请求失败，请稍后重试。");
+            notify("error", message);
+            return { ok: false, error };
+        }
+    }
+
+    // 异步操作期间锁定按钮，防止用户重复提交。
+    async function withBusy(button, task) {
+        if (!button || button.disabled) return;
+        const original = button.textContent;
+        button.disabled = true;
+        button.textContent = "处理中…";
+        try {
+            await task();
+        } finally {
+            button.disabled = false;
+            button.textContent = original;
+        }
+    }
+
+    // 校验正整数，并读取待办接口需要的当前账号 ID。
+    function positiveInteger(input, label) {
+        const value = Number(input.value);
+        if (!Number.isInteger(value) || value < 1) {
+            notify("error", `请输入有效的${label}（大于等于 1 的整数）。`);
+            input.focus();
+            return null;
+        }
+        return value;
+    }
+
+    function currentAccountId() {
+        return positiveInteger($("#accountId"), "账号 ID");
+    }
+
+    // 待办操作前的前端登录检查；真正权限仍由后端再次验证。
+    function requireLogin() {
+        if (localStorage.getItem(STORAGE.token)) return true;
+        notify("error", "请先登录，再管理待办事项。");
+        $("#authPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+        return false;
+    }
+
+    // 根据 localStorage 中的 Token 切换登录卡片与待办区域。
+    function updateLoginStatus() {
+        const token = localStorage.getItem(STORAGE.token);
+        const username = localStorage.getItem(STORAGE.username);
+        const chip = $("#loginChip");
+        const preview = $("#tokenPreview");
+        const accountCard = $("#accountCard");
+        const todoLoginRequired = $("#todoLoginRequired");
+        const todoWorkspace = $("#todoWorkspace");
+
+        if (token) {
+            chip.classList.add("logged-in");
+            $("#loginState").textContent = "已登录";
+            $("#loginDetail").textContent = username || "Token 已保存";
+            preview.textContent = token.length > 44 ? `${token.slice(0, 22)}…${token.slice(-14)}` : token;
+            preview.title = token;
+            accountCard.hidden = false;
+            todoLoginRequired.hidden = true;
+            todoWorkspace.hidden = false;
+        } else {
+            chip.classList.remove("logged-in");
+            $("#loginState").textContent = "未登录";
+            $("#loginDetail").textContent = "请先登录以保存访问令牌";
+            preview.textContent = "尚未登录";
+            preview.title = "当前 Token";
+            accountCard.hidden = true;
+            todoLoginRequired.hidden = false;
+            todoWorkspace.hidden = true;
+        }
+    }
+
+    // 把数据库时间转换为本地中文时间。
+    function formatTime(value) {
+        if (!value) return "创建时间未知";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("zh-CN", { hour12: false });
+    }
+
+    // 用统一样式渲染“暂无数据”等空状态。
+    function emptyState(container, title, description) {
+        container.replaceChildren();
+        const box = make("div", "empty");
+        box.appendChild(make("strong", "", title));
+        box.appendChild(document.createTextNode(description));
+        container.appendChild(box);
+    }
+
+    // 根据 state.todos 重建待办列表，并绑定状态、修改和删除事件。
+    function renderTodos() {
+        const list = $("#todoList");
+        $("#todoListTitle").textContent = state.todoViewTitle;
+        $("#todoCount").textContent = `${state.todos.length} 条`;
+
+        if (!state.todos.length) {
+            emptyState(list, "没有查询到待办", "可以更换筛选条件或新增一条待办。");
+            return;
+        }
+
+        list.replaceChildren();
+        state.todos.forEach((todo) => {
+            const completed = Number(todo.completed) === 1;
+            const item = make("article", `todo-item${completed ? " completed" : ""}`);
+
+            const check = make("button", "check-button", completed ? "✓" : "");
+            check.type = "button";
+            check.title = completed ? "标记为未完成" : "标记为已完成";
+            check.setAttribute("aria-label", check.title);
+            check.addEventListener("click", () => toggleTodo(todo, check));
+
+            const content = make("div");
+            content.appendChild(make("p", "todo-title", todo.title || "（无标题）"));
+            const meta = make("div", "meta");
+            meta.appendChild(make("span", "", `待办 #${todo.id ?? "-"}`));
+            meta.appendChild(make("span", "", `账号 #${todo.accountId ?? "-"}`));
+            meta.appendChild(make("span", "", completed ? "已完成" : "未完成"));
+            meta.appendChild(make("span", "", formatTime(todo.createdTime)));
+            content.appendChild(meta);
+
+            const actions = make("div", "item-actions");
+            const edit = make("button", "btn btn-secondary btn-sm", "修改标题");
+            edit.type = "button";
+            edit.addEventListener("click", () => editTodo(todo, edit));
+            const remove = make("button", "btn btn-danger btn-sm", "删除");
+            remove.type = "button";
+            remove.addEventListener("click", () => deleteTodo(todo, remove));
+            actions.append(edit, remove);
+
+            item.append(check, content, actions);
+            list.appendChild(item);
+        });
+    }
+
+    // 按全部、未完成、已完成或分页模式拼接不同查询地址。
+    async function loadTodos(mode, button) {
+        if (!requireLogin()) return;
+        const accountId = currentAccountId();
+        if (accountId === null) return;
+
+        let path;
+        let title;
+        if (mode === "page") {
+            const page = positiveInteger($("#todoPage"), "页码");
+            const size = positiveInteger($("#todoSize"), "每页条数");
+            if (page === null || size === null) return;
+            path = `/todos/page?${new URLSearchParams({ accountId, page, size })}`;
+            title = `待办列表 · 第 ${page} 页`;
+        } else if (mode === "open" || mode === "done") {
+            const completed = mode === "done" ? 1 : 0;
+            path = `/todos/status?${new URLSearchParams({ accountId, completed })}`;
+            title = completed ? "已完成待办" : "未完成待办";
+        } else {
+            path = `/todos?${new URLSearchParams({ accountId })}`;
+            title = "全部待办";
+        }
+
+        await withBusy(button, async () => {
+            const result = await apiRequest(path, {}, "待办查询成功");
+            if (!result.ok) return;
+            state.todos = Array.isArray(result.data) ? result.data : [];
+            state.todoViewTitle = title;
+            renderTodos();
+        });
+    }
+
+    // 切换一条待办的完成状态。
+    async function toggleTodo(todo, button) {
+        if (!requireLogin()) return;
+        const accountId = currentAccountId();
+        if (accountId === null) return;
+        const completed = Number(todo.completed) === 1 ? 0 : 1;
+        const params = new URLSearchParams({ completed, accountId });
+        await withBusy(button, async () => {
+            const result = await apiRequest(`/todos/${encodeURIComponent(todo.id)}/status?${params}`, { method: "PUT" }, "待办状态修改成功");
+            if (!result.ok) return;
+            todo.completed = completed;
+            renderTodos();
+        });
+    }
+
+    // 修改一条待办的标题。
+    async function editTodo(todo, button) {
+        if (!requireLogin()) return;
+        const accountId = currentAccountId();
+        if (accountId === null) return;
+        const title = window.prompt("请输入新的待办标题：", todo.title || "");
+        if (title === null) return;
+        const cleanTitle = title.trim();
+        if (!cleanTitle) {
+            notify("error", "待办标题不能为空。");
+            return;
+        }
+
+        const params = new URLSearchParams({ title: cleanTitle, accountId });
+        await withBusy(button, async () => {
+            const result = await apiRequest(`/todos/${encodeURIComponent(todo.id)}?${params}`, { method: "PUT" }, "待办标题修改成功");
+            if (!result.ok) return;
+            todo.title = cleanTitle;
+            renderTodos();
+        });
+    }
+
+    // 用户确认后删除待办，并同步更新当前页面状态。
+    async function deleteTodo(todo, button) {
+        if (!requireLogin()) return;
+        const accountId = currentAccountId();
+        if (accountId === null) return;
+        if (!window.confirm(`确定删除待办“${todo.title || todo.id}”吗？`)) return;
+        await withBusy(button, async () => {
+            const params = new URLSearchParams({ accountId });
+            const result = await apiRequest(`/todos/${encodeURIComponent(todo.id)}?${params}`, { method: "DELETE" }, "待办删除成功");
+            if (!result.ok) return;
+            state.todos = state.todos.filter((item) => item.id !== todo.id);
+            renderTodos();
+        });
+    }
+
+    // 注册：创建账号后自动登录，并按后端返回的角色跳转。
+    $("#registerForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = event.submitter;
+        const username = $("#registerUsername").value.trim();
+        const password = $("#registerPassword").value;
+        if (!username || !password) return;
+
+        await withBusy(button, async () => {
+            const result = await apiRequest("/register", {
+                method: "POST",
+                body: JSON.stringify({ username, password })
+            }, "注册成功");
+            if (!result.ok) return;
+
+            const loginResult = await apiRequest("/login", {
+                method: "POST",
+                body: JSON.stringify({ username, password })
+            }, "注册成功，已自动登录");
+            const token = loginResult.data?.token;
+            if (!loginResult.ok) return;
+            if (!token) {
+                notify("error", "登录响应中未找到 Token，无法进入待办页面。");
+                return;
+            }
+            localStorage.setItem(STORAGE.token, token);
+            localStorage.setItem(STORAGE.username, username);
+            localStorage.setItem(STORAGE.accountId, String(loginResult.data.accountId));
+            localStorage.setItem(STORAGE.role, loginResult.data.role || "USER");
+            form.reset();
+            window.location.href = loginResult.data.role === "ADMIN" ? "/admin.html" : "/todo.html";
+        });
+    });
+
+    // 登录：保存 JWT、账号 ID 和角色，然后进入对应工作台。
+    $("#loginForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = event.submitter;
+        const username = $("#loginUsername").value.trim();
+        const password = $("#loginPassword").value;
+        if (!username || !password) return;
+
+        await withBusy(button, async () => {
+            const result = await apiRequest("/login", {
+                method: "POST",
+                body: JSON.stringify({ username, password })
+            }, "登录成功");
+            const token = result.data?.token;
+            if (!result.ok) return;
+            if (!token) {
+                notify("error", "登录响应中未找到 Token，未保存登录状态。");
+                return;
+            }
+            localStorage.setItem(STORAGE.token, token);
+            localStorage.setItem(STORAGE.username, username);
+            localStorage.setItem(STORAGE.accountId, String(result.data.accountId));
+            localStorage.setItem(STORAGE.role, result.data.role || "USER");
+            updateLoginStatus();
+            form.reset();
+            window.location.href = result.data.role === "ADMIN" ? "/admin.html" : "/todo.html";
+        });
+    });
+
+    // 手动保存账号 ID，供后续待办接口作为 accountId 参数使用。
+    $("#saveAccountId").addEventListener("click", () => {
+        const accountId = currentAccountId();
+        if (accountId === null) return;
+        localStorage.setItem(STORAGE.accountId, String(accountId));
+        notify("success", `账号 ID ${accountId} 已保存，后续待办请求将使用该值。`);
+    });
+
+    // 退出登录：清空本地身份数据并刷新页面状态。
+    $("#logoutButton").addEventListener("click", () => {
+        localStorage.removeItem(STORAGE.token);
+        localStorage.removeItem(STORAGE.username);
+        localStorage.removeItem(STORAGE.accountId);
+        localStorage.removeItem(STORAGE.role);
+        updateLoginStatus();
+        notify("info", "已清除本地登录状态和 Token。");
+    });
+
+    // 未登录时把视图滚动到登录表单。
+    $("#goToLogin").addEventListener("click", () => {
+        $("#authPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+        $("#loginUsername").focus({ preventScroll: true });
+    });
+
+    // 新增待办：POST /todos，成功后把新对象插入列表顶部。
+    $("#addTodoForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        if (!requireLogin()) return;
+        const accountId = currentAccountId();
+        if (accountId === null) return;
+        const title = $("#newTodoTitle").value.trim();
+        if (!title) return;
+
+        await withBusy(event.submitter, async () => {
+            const result = await apiRequest("/todos", {
+                method: "POST",
+                body: JSON.stringify({ title, accountId })
+            }, "待办新增成功");
+            if (!result.ok) return;
+            form.reset();
+            const saved = result.data || { title, accountId, completed: 0 };
+            if (saved.completed === null || saved.completed === undefined) saved.completed = 0;
+            state.todos = [saved, ...state.todos];
+            state.todoViewTitle = "当前结果（含新待办）";
+            renderTodos();
+        });
+    });
+
+    // 四个查询按钮共用 loadTodos，通过 mode 决定调用哪个接口。
+    $("#loadAllTodos").addEventListener("click", (event) => loadTodos("all", event.currentTarget));
+    $("#loadOpenTodos").addEventListener("click", (event) => loadTodos("open", event.currentTarget));
+    $("#loadDoneTodos").addEventListener("click", (event) => loadTodos("done", event.currentTarget));
+    $("#loadTodoPage").addEventListener("click", (event) => loadTodos("page", event.currentTarget));
+
+    // 页面初始化：恢复账号 ID；已登录用户会直接进入对应角色页面。
+    const savedAccountId = localStorage.getItem(STORAGE.accountId);
+    if (savedAccountId) $("#accountId").value = savedAccountId;
+    updateLoginStatus();
+    if (localStorage.getItem(STORAGE.token)) {
+        const target = localStorage.getItem(STORAGE.role) === "ADMIN"
+            ? "/admin.html"
+            : "/todo.html";
+        window.location.replace(target);
+    } else if (new URLSearchParams(window.location.search).has("loginRequired")) {
+        notify("info", "请先登录，再进入待办管理页面。");
+    }
+</script>
+</body>
+</html>

@@ -2,6 +2,8 @@ package com.example.demo;
 
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class AccountService {
 
@@ -23,16 +25,31 @@ public class AccountService {
     }
 
     // 登录
-    public boolean login(Account account) {
+    public Account login(Account account) {
         Account savedAccount =
                 accountMapper.findByUsername(account.getUsername());
 
         // 用户名不存在
         if (savedAccount == null) {
-            return false;
+            return null;
         }
 
         // 用户名存在，再比较密码
-        return savedAccount.getPassword().equals(account.getPassword());
+        return savedAccount.getPassword().equals(account.getPassword())
+                ? savedAccount
+                : null;
+    }
+
+    public boolean isAdmin(String username) {
+        Account account = accountMapper.findByUsername(username);
+        return account != null && "ADMIN".equalsIgnoreCase(account.getRole());
+    }
+
+    public Account findByUsername(String username) {
+        return accountMapper.findByUsername(username);
+    }
+
+    public List<AccountView> findAllAccounts() {
+        return accountMapper.findAllAccounts();
     }
 }

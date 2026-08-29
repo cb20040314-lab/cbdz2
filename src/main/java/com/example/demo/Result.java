@@ -13,6 +13,7 @@ public class Result<T> {
     }
 
     public static <T> Result<T> success(T data) {
+
         return new Result<>(1, "操作成功", data);
     }
 

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!--
+  管理员控制台：只允许 role=ADMIN 的已登录用户访问。
+  页面通过受保护的 /admin/accounts 接口展示不含密码的账号信息。
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="轻简待办管理员控制台">
+    <title>管理员控制台</title>
+    <style>
+        /* 管理员页面的主题变量和基础视觉样式。 */
+        :root {
+            --bg: #f4f7fb;
+            --surface: #fff;
+            --text: #172033;
+            --muted: #687386;
+            --line: #e3e8f1;
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --primary-soft: #eef2ff;
+            --success: #15803d;
+            --danger: #dc2626;
+            --shadow: 0 18px 45px rgba(33, 43, 76, .09);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-width: 320px;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 8% 0%, rgba(79, 70, 229, .13), transparent 29rem),
+                radial-gradient(circle at 95% 15%, rgba(14, 165, 233, .1), transparent 25rem),
+                var(--bg);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            line-height: 1.5;
+        }
+
+        button { font: inherit; cursor: pointer; }
+        button:disabled { cursor: not-allowed; opacity: .62; }
+
+        .shell {
+            width: min(1050px, calc(100% - 32px));
+            margin: 0 auto;
+        }
+
+        .hero { padding: 42px 0 24px; }
+
+        .hero-row,
+        .panel-head,
+        .actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+        }
+
+        .eyebrow {
+            color: var(--primary-dark);
+            font-size: 13px;
+            font-weight: 850;
+            letter-spacing: .08em;
+        }
+
+        h1 {
+            margin: 8px 0 0;
+            font-size: clamp(30px, 6vw, 48px);
+            line-height: 1.08;
+            letter-spacing: -.04em;
+        }
+
+        .hero p { margin: 12px 0 0; color: var(--muted); }
+
+        .admin-chip {
+            flex: 0 0 auto;
+            padding: 11px 16px;
+            border: 1px solid #c7d2fe;
+            border-radius: 999px;
+            color: var(--primary-dark);
+            background: rgba(255, 255, 255, .82);
+            font-size: 14px;
+            font-weight: 800;
+            box-shadow: 0 8px 25px rgba(33, 43, 76, .07);
+        }
+
+        .panel {
+            margin-bottom: 55px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, .94);
+            box-shadow: var(--shadow);
+        }
+
+        .panel-head {
+            padding: 22px 24px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .panel-head h2 { margin: 0; font-size: 20px; }
+        .panel-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+        .actions { justify-content: flex-end; flex-wrap: wrap; }
+
+        .btn {
+            min-height: 40px;
+            padding: 8px 14px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            color: #fff;
+            background: var(--primary);
+            font-weight: 760;
+        }
+
+        .btn:hover:not(:disabled) { background: var(--primary-dark); }
+
+        .btn-secondary {
+            border-color: #d7deea;
+            color: #354056;
+            background: #fff;
+        }
+
+        .btn-secondary:hover:not(:disabled) { background: #f8fafc; }
+
+        .btn-danger {
+            border-color: #fecaca;
+            color: var(--danger);
+            background: #fef2f2;
+        }
+
+        .btn-danger:hover:not(:disabled) { background: #fee2e2; }
+
+        .table-wrap { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px 24px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+        }
+
+        th {
+            color: #465167;
+            background: #f8fafc;
+            font-size: 13px;
+        }
+
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr:hover { background: #fafbff; }
+
+        .role {
+            display: inline-block;
+            padding: 4px 9px;
+            border-radius: 999px;
+            color: #475569;
+            background: #f1f5f9;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .role.admin {
+            color: var(--primary-dark);
+            background: var(--primary-soft);
+        }
+
+        .empty {
+            padding: 42px 20px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .count {
+            display: inline-block;
+            margin-left: 7px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            color: var(--primary-dark);
+            background: var(--primary-soft);
+            font-size: 12px;
+            vertical-align: middle;
+        }
+
+        .toast {
+            position: fixed;
+            z-index: 20;
+            top: 18px;
+            right: 18px;
+            width: min(390px, calc(100% - 36px));
+            padding: 13px 15px;
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--success);
+            border-radius: 11px;
+            background: #fff;
+            box-shadow: 0 15px 35px rgba(15, 23, 42, .16);
+        }
+
+        .toast.error { border-left-color: var(--danger); }
+
+        @media (max-width: 680px) {
+            .shell { width: calc(100% - 20px); }
+            .hero-row, .panel-head { align-items: flex-start; flex-direction: column; }
+            .actions { width: 100%; justify-content: stretch; }
+            .actions .btn { flex: 1 1 auto; }
+            th, td { padding: 13px 16px; }
+        }
+    </style>
+</head>
+<body>
+<!-- 单个 Toast 提示框，内容和状态样式由 notify() 更新。 -->
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+
+<!-- 管理员页头部：显示页面用途和当前管理员用户名。 -->
+<header class="hero">
+    <div class="shell hero-row">
+        <div>
+            <div class="eyebrow">轻简待办 · ADMIN</div>
+            <h1>管理员控制台</h1>
+            <p>查看已注册账号的安全信息，账号密码不会在此页面返回。</p>
+        </div>
+        <div id="adminChip" class="admin-chip">管理员</div>
+    </div>
+</header>
+
+<main class="shell">
+    <!-- 账号列表区域：支持刷新列表和退出登录。 -->
+    <section class="panel" aria-labelledby="accountsTitle">
+        <div class="panel-head">
+            <div>
+                <h2 id="accountsTitle">注册用户列表 <span id="accountCount" class="count">0 人</span></h2>
+                <p>数据来自受管理员权限保护的 <code>/admin/accounts</code> 接口。</p>
+            </div>
+            <div class="actions">
+                <button id="refreshButton" class="btn" type="button">刷新列表</button>
+                <button id="logoutButton" class="btn btn-danger" type="button">退出登录</button>
+            </div>
+        </div>
+
+        <!-- 后端返回 AccountView 数组后，脚本会动态创建这里的表格行。 -->
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">账号 ID</th>
+                    <th scope="col">用户名</th>
+                    <th scope="col">角色</th>
+                </tr>
+                </thead>
+                <tbody id="accountRows"></tbody>
+            </table>
+            <div id="emptyState" class="empty">正在加载用户列表…</div>
+        </div>
+    </section>
+</main>
+
+<script>
+    "use strict";
+
+    // 与登录页、待办页保持一致的 localStorage 键名。
+    const STORAGE = {
+        token: "todo_manager_token",
+        username: "todo_manager_username",
+        accountId: "todo_manager_account_id",
+        role: "todo_manager_role"
+    };
+
+    // 读取本地身份信息，后续请求会把 token 放入 Authorization 请求头。
+    const token = localStorage.getItem(STORAGE.token);
+    const role = localStorage.getItem(STORAGE.role);
+
+    // 前端路由守卫：没有 Token 或不是管理员时返回登录页。
+    if (!token || role !== "ADMIN") {
+        window.location.replace("/?loginRequired=1");
+    }
+
+    // 显示一个定时隐藏的成功或错误消息。
+    function notify(message, type = "success") {
+        const toast = document.querySelector("#toast");
+        toast.textContent = message;
+        toast.className = `toast ${type}`;
+        toast.hidden = false;
+        window.clearTimeout(notify.timer);
+        notify.timer = window.setTimeout(() => { toast.hidden = true; }, 4500);
+    }
+
+    // 退出管理员账号：清除全部登录信息并回到首页。
+    function clearLoginAndReturn() {
+        Object.values(STORAGE).forEach((key) => localStorage.removeItem(key));
+        window.location.replace("/");
+    }
+
+    // 将后端返回的 AccountView 列表转换为表格行；数据中不包含密码。
+    function renderAccounts(accounts) {
+        const rows = document.querySelector("#accountRows");
+        const empty = document.querySelector("#emptyState");
+        rows.replaceChildren();
+        document.querySelector("#accountCount").textContent = `${accounts.length} 人`;
+
+        if (!accounts.length) {
+            empty.textContent = "没有查询到注册账号。";
+            empty.hidden = false;
+            return;
+        }
+
+        empty.hidden = true;
+        accounts.forEach((account) => {
+            const row = document.createElement("tr");
+            const idCell = document.createElement("td");
+            const nameCell = document.createElement("td");
+            const roleCell = document.createElement("td");
+            const badge = document.createElement("span");
+
+            idCell.textContent = account.id ?? "-";
+            nameCell.textContent = account.username || "（未命名）";
+            badge.className = `role${account.role === "ADMIN" ? " admin" : ""}`;
+            badge.textContent = account.role === "ADMIN" ? "管理员" : "普通用户";
+            roleCell.appendChild(badge);
+            row.append(idCell, nameCell, roleCell);
+            rows.appendChild(row);
+        });
+    }
+
+    // 携带管理员 JWT 请求账号列表，并统一处理加载状态和异常提示。
+    async function loadAccounts() {
+        const button = document.querySelector("#refreshButton");
+        button.disabled = true;
+        button.textContent = "加载中…";
+
+        try {
+            const response = await fetch("/admin/accounts", {
+                headers: {
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            const payload = await response.json();
+
+            if (!response.ok || Number(payload.code) !== 1) {
+                throw new Error(payload.message || "用户列表加载失败");
+            }
+
+            renderAccounts(Array.isArray(payload.data) ? payload.data : []);
+            notify("用户列表加载成功");
+        } catch (error) {
+            document.querySelector("#emptyState").textContent = "用户列表加载失败。";
+            document.querySelector("#emptyState").hidden = false;
+            notify(error instanceof TypeError ? "网络异常，请确认后端正在运行。" : error.message, "error");
+        } finally {
+            button.disabled = false;
+            button.textContent = "刷新列表";
+        }
+    }
+
+    // 页面初始化：显示管理员名称、绑定按钮并立即加载一次账号列表。
+    document.querySelector("#adminChip").textContent = `管理员：${localStorage.getItem(STORAGE.username) || "admin"}`;
+    document.querySelector("#refreshButton").addEventListener("click", loadAccounts);
+    document.querySelector("#logoutButton").addEventListener("click", clearLoginAndReturn);
+    loadAccounts();
+</script>
+</body>
+</html>

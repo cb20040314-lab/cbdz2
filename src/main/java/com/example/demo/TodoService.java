@@ -45,8 +45,8 @@ public class TodoService {
     }
 
     // 删除待办
-    public boolean delete(Integer id) {
-        return todoMapper.deleteById(id) > 0;
+    public boolean delete(Integer id, Integer accountId) {
+        return todoMapper.deleteById(id, accountId) > 0;
     }
 
     public List<Todo> findPage(Integer accountId, int page, int size) {
@@ -58,7 +58,7 @@ public class TodoService {
         return todoMapper.findByStatus(accountId, completed);
     }
 
-    public boolean updateTitle(Integer id, String title) {
-        return todoMapper.updateTitle(id, title) > 0;
+    public boolean updateTitle(Integer id, String title, Integer accountId) {
+        return todoMapper.updateTitle(id, title, accountId) > 0;
     }
 }
